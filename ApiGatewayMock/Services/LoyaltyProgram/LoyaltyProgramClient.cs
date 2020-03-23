@@ -21,6 +21,15 @@ namespace ApiGatewayMock.Services.LoyaltyProgram
                     (_, __) => Console.WriteLine("retrying..." + _)
                 );
 
+        private static IAsyncPolicy circuitBreaker =
+            Policy
+                .Handle<Exception>()
+                .CircuitBreakerAsync(
+                    5,
+                    TimeSpan.FromMinutes(3),
+                    (_, __) => Console.WriteLine("breaking..." + _),
+                    () => Console.WriteLine("reseting..."));
+
         private string hostName;
 
         public LoyaltyProgramClient(string loyalProgramMicroserviceHostName)
@@ -30,7 +39,7 @@ namespace ApiGatewayMock.Services.LoyaltyProgram
 
         public async Task<HttpResponseMessage> QueryUser(int userId)
         {
-            return await exponentialRetryPolicy.ExecuteAsync(async () =>
+            return await circuitBreaker.ExecuteAsync(async () =>
             {
                 var userResource = $"/users/{userId}";
                 using (var httpClient = new HttpClient())
